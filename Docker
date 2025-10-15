@@ -1,0 +1,10 @@
+name: churn-mlops-project
+
+conda_env: conda.yaml # Not used in this basic example, but good practice
+
+entry_points:
+  main:
+    parameters:
+      n_estimators: {type: int, default: 100}
+      max_depth: {type: int, default: 5}
+    command: "python src/model.py --n_estimators {n_estimators} --max_depth {max_depth}"
