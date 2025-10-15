@@ -1,0 +1,85 @@
+name: MLOps CI/CD Pipeline with MLflow and Docker
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  # === 1. Continuous Integration & Model Training ===
+  ci_train_test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v3
+
+      - name: 🐍 Set up Python
+        uses: actions/setup-python@v3
+        with:
+          python-version: '3.10'
+
+      - name: ⚙️ Install dependencies
+        run: pip install -r requirements.txt mlflow
+
+      - name: 🧪 Run Unit Tests (Placeholder)
+        # In a real project, you would have a 'pytest' command here
+        run: echo "Running unit tests... (placeholder)" 
+
+      - name: ⚙️ Train and Log Model (MLflow)
+        run: python src/model.py
+
+      - name: 📈 Evaluate Model and Decide Deployment
+        # In a real project, this script would:
+        # 1. Query MLflow for the production model's metric.
+        # 2. Compare the new run's metric.
+        # 3. If the new model is BETTER, it sets an output variable for the next job to deploy.
+        run: |
+          echo "Comparing new model to production model in MLflow..."
+          # For a basic demo, we'll assume the training script logs a good model.
+          echo "Deployment_Needed=true" >> $GITHUB_ENV 
+
+  # === 2. Continuous Deployment (Docker Build & Push) ===
+  cd_deploy:
+    needs: ci_train_test # Only run if CI/Training passed
+    if: env.Deployment_Needed == 'true' # Only run if a better model was found
+    runs-on: ubuntu-latest
+    
+    # Secrets for Docker Hub (you need to set these in GitHub Repository Secrets)
+    env:
+      DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+      DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+      IMAGE_NAME: churn-prediction-api
+      IMAGE_TAG: ${{ github.sha }} # Use the commit SHA as the version tag
+
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v3
+
+      - name: 🐳 Login to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ env.DOCKER_USERNAME }}
+          password: ${{ env.DOCKER_PASSWORD }}
+
+      - name: 🛠️ Build Docker Image
+        run: docker build -t $DOCKER_USERNAME/$IMAGE_NAME:$IMAGE_TAG .
+
+      - name: ⬆️ Push Docker Image
+        run: docker push $DOCKER_USERNAME/$IMAGE_NAME:$IMAGE_TAG
+
+      - name: 🚀 Deploy to Production (Placeholder)
+        # In a real job, this step would use AWS, Azure, GCP or Kubernetes:
+        # e.g., using 'kubectl' to update a deployment or AWS/Azure CLI.
+        run: |
+          echo "Image pushed: $DOCKER_USERNAME/$IMAGE_NAME:$IMAGE_TAG"
+          echo "Simulating production update (e.g., updating Kubernetes deployment with the new image tag)..."
+          
+      - name: 🏷️ Update MLflow Model Stage (Promote to Production)
+        # This script simulates promoting the best model to 'Production' stage
+        # In a real scenario, this would use the MLflow API to transition the model.
+        run: |
+          echo "Using MLflow API to set the best model version to 'Production' stage..."
+          echo "The new model is now live!"
